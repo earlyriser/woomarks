@@ -43,7 +43,6 @@ const tagsInput = document.getElementById("tagsInput");
 const saveBtn = document.getElementById("saveBtn");
 const cancelBtn = document.getElementById("cancelBtn");
 const openEmptyDialogBtn = document.getElementById("openEmptyDialogBtn");
-const appcodeGroup = document.getElementById("appcodeGroup");
 const appcodeInput = document.getElementById("appcode");
 const modalOverlay = document.getElementById("modalOverlay");
 const searchInput =document.getElementById("searchInput");
@@ -432,6 +431,7 @@ if(sortToggleBtn){
 // ====== Dialog Logic ======
 
 function showParamsIfPresent() {
+  if (!dialog) return; 
   const params = new URLSearchParams(window.location.search);
   const title = params.get("title");
   const url = params.get("url");
@@ -655,8 +655,6 @@ fetch("mybookmarks.csv")
 
 // Show or hide appcode input based on localStorage
 const savedAppcode = localStorage.getItem("appcode");
-if (!savedAppcode) appcodeGroup.style.display = "flex";
-if (!appcode) appcodeGroup.style.display = "none";
 
 /**
  * Enable or disable save button based on appcode input state.
