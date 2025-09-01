@@ -41,7 +41,7 @@ It also can import/export to csv files or local storage.
 - If you want to showcase your saved links, update the **mybookmarks.csv** file
 
 #### IMPORT FROM POCKET
-- Go to this Pocket page to export your links
+- Go to this Pocket page to export your links. https://getpocket.com/export.php?
 
 **Option 1** (If you want your links public)
 - Replace the mybookmarks.csv witha the content of your Pocket csv file.
