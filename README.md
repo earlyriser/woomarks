@@ -26,17 +26,6 @@ It also can import/export to csv files or local storage.
 #### BASIC INSTALL
  - Copy the contents of this repository to an online directory. That's all. You can start saving links.
 
-
-#### HIDE SAVE BUTTON
- - If you are using this for your personal use (you don't want anyone else saving on your page), you can uncomment this line in **script.js** file
- and add the code you want here AND as a variable in your browser's local storage.
-
-`
- // const appcode = "notsosecretcode"; 
- `
-
- ![screenshot](screenshot_appcode.png)
-
 #### SHOWCASE YOUR LINKS
 - If you want to showcase your saved links, update the **mybookmarks.csv** file
 
@@ -48,6 +37,28 @@ It also can import/export to csv files or local storage.
 
 **Option 2** (If you want your links saved on your browser's local storage)
 - Add > Bulk Transfer > Paste the contents.
+
+#### CREATE BOOKMARKLET
+To be able to easily save bookmarks create a bookmarklet:
+- In your browser, create a new bookmark with "add woomark" () as Name
+- Paste the next code as URL.
+```
+javascript:(function(){
+const url = encodeURIComponent(window.location.href);
+const title = encodeURIComponent(document.title);
+window.open(`https://YOURDOMAINGOESHERE.com/?title=${title}&url=${url}`, '_blank');
+})();
+```
+
+#### HIDE SAVE BUTTON
+ - If you are using this for your personal use (you don't want anyone else saving on your page), you can uncomment this line in **script.js** file
+ and add the code you want here AND as a variable in your browser's local storage.
+
+`
+ // const appcode = "notsosecretcode"; 
+ `
+
+ ![screenshot](screenshot_appcode.png)
 
 ## Features
 - Add/Delete links
