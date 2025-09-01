@@ -2,6 +2,7 @@
 const LOCAL_GLOW = true;  // adds a glow to differentiate items stored locally in the browser from those stored in csv file
 const EXPORT = "all"; // choose export type "all", "csv", "local" 
 // const appcode = "notsosecretcode";  
+
 const MAX_CHARS_PER_LINE = 15;
 const MAX_LINES = 4;
 const EST_CHAR_WIDTH = 0.6; // em
