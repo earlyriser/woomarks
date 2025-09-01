@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>woomarks</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Doto&family=Alfa+Slab+One&family=Bebas+Neue&family=Bree+Serif&family=Caveat&family=Courier+Prime&family=Dosis&family=EB+Garamond&family=Permanent+Marker&family=Sedan+SC&family=Ultra&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div class="topbar">
+      <div style="flex-grow: 1">
+        <b><a id="headerTitle" href="">woomarks</a></b>
+        <a href="/faq.html">FAQ</a>
+      </div>
+      <button id="openEmptyDialogBtn" data-umami-event="Open creation modal" class="param-btn"><span class="btn-text">Add</span> ➕</button>
+
+      <button id="sortToggleBtn" data-umami-event="Sort" class="param-btn"><span class="btn-text">Sort</span> ▲</button>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="'demo' '#books'"
+        data-umami-event="Search"
+      />
+    </div>
+
+    <div class="containers"></div>
+
+    <!-- LEAVE THIS THIS LINE -->
+    <div class="footer">Made with <a href="">woomarks</a>.</div>
+
+    <dialog id="paramDialog" class="param-dialog">
+      <form method="dialog" class="param-form">
+        <div class="param-group">
+          <label for="paramTitle" class="param-label">Title</label>
+          <input
+            type="text"
+            id="paramTitle"
+            name="paramTitle"
+            class="param-input"
+          />
+        </div>
+
+        <div class="param-group">
+          <label for="paramUrl" class="param-label">URL</label>
+          <input
+            type="text"
+            id="paramUrl"
+            name="paramUrl"
+            class="param-input"
+          />
+        </div>
+
+        <div class="param-group">
+          <label for="tagsInput" class="param-label"
+            >Tags (comma-separated)</label
+          >
+          <input
+            id="tagsInput"
+            type="text"
+            class="param-input"
+            placeholder="e.g. work, music"
+          />
+        </div>
+
+        <p id="paramDialogCount" class="param-count"></p>
+
+        <menu class="param-menu">
+          <div class="menu-left">
+            <a id="importBtn" href="/transfer_page.html" class="import-link"
+              >Bulk Transfer</a
+            >
+          </div>
+          <div class="menu-right">
+            <button
+              id="cancelBtn"
+              type="button"
+              value="cancel"
+              class="param-btn cancel"
+            >
+              Cancel
+            </button>
+            <button
+              id="saveBtn"
+              type="button"
+              value="default"
+              class="param-btn dark"
+              data-umami-event="Add bookmark"
+            >
+              Add bookmark
+            </button>
+          </div>
+        </menu>
+      </form>
+    </dialog>
+  </body>
+  <script async src="./script.js"></script>
+</html>

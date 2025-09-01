@@ -1,0 +1,327 @@
+body {
+  margin: 0;
+  font-family: "Courier", monospace;
+  color: #555;
+  background: #fff;
+}
+p {
+  margin: 0.5rem 0;
+}
+h3 {
+  margin-top: 2rem;
+  margin-bottom: 0px;
+}
+a {
+  color: #555;
+}
+
+.footer {
+  text-align: center;
+  padding: 50px 0 70px;
+}
+
+.containers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1vw;
+  padding: 3vw;
+  box-sizing: border-box;
+}
+
+.container {
+  width: 30vw;
+  height: 30vw;
+  background: #fefdfd;
+  border: 0px;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 10px;
+  position: relative;
+}
+
+.container a {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.container span {
+  display: block;
+  width: 100%;
+  word-break: break-word;
+  line-height: 1.2;
+}
+.local-container {
+  box-shadow: 0 0 4px 4px rgba(94, 255, 180, 0.756); /* glowing green */
+}
+
+.topbar {
+  width: 100%;
+  min-height: 57px;
+  padding: 10px 20px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  color: #555;
+}
+#headerTitle {
+  color: #555;
+  text-decoration: none;
+  margin-right: 1rem;
+  white-space: nowrap;
+}
+
+#whatsThis {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+#searchInput {
+  width: 140px;
+  margin-left: 1vw;
+}
+
+hr {
+  border: none;
+  height: 2vw;
+  margin: 0;
+  visibility: hidden;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* aligns modal to top */
+  padding: 40px 20px; /* top/bottom space */
+  overflow-y: auto; /* scrolls if modal content is too tall */
+  z-index: 100;
+}
+
+.modal-content {
+  width: 70%;
+  max-width: 1000px;
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+  max-height: calc(
+    100vh - 80px
+  ); /* ensures modal never exceeds screen height */
+  overflow-y: auto; /* scroll inside modal if needed */
+}
+
+.hidden {
+  display: none;
+}
+
+.param-dialog {
+  padding: 1.5rem;
+  border: none;
+  border-radius: 10px;
+  width: 50%;
+  font-family: "Courier", monospace;
+}
+
+.param-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.param-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.param-label {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+  color: #555;
+}
+
+input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: "Courier", monospace;
+}
+
+.param-menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0;
+  margin-top: 12px;
+}
+
+.menu-left {
+  flex: 1;
+}
+
+.menu-right {
+  display: flex;
+  gap: 12px;
+}
+
+.export-link {
+  font-size: 0.9rem;
+  color: #0077cc;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.export-link:hover {
+  text-decoration: none;
+}
+
+.param-btn {
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 0 0.5vw 0 0;
+  padding: 8px 16px 8px;
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+  font-family: "Courier", monospace;
+}
+
+.param-btn:hover {
+  background: #e0e0e0;
+}
+
+.param-btn.cancel {
+  background: #eee;
+  color: #555;
+}
+
+.param-btn.dark {
+  background: #555;
+  color: white;
+}
+
+.tags-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3vw;
+  margin-top: -1vw;
+}
+
+.tag-style {
+  font-family: "Courier", monospace;
+  font-size: 1.3vw;
+  padding: 0 6px;
+  opacity: 0.8;
+  cursor: pointer;
+}
+.tag-style:hover {
+  border: 1px solid currentColor;
+}
+
+.delete-btn {
+  position: absolute;
+  opacity: 0;
+
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
+  color: inherit;
+  border: 1px solid transparent;
+  background-color: transparent;
+  font-size: 1vw;
+  font-family: "Courier", monospace;
+}
+.container:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  font-weight: bold;
+  cursor: pointer;
+  border: 1px solid currentColor;
+}
+
+.param-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+.page {
+  padding: 20px 20vw;
+}
+
+pre {
+  overflow-x: auto;
+  padding: 1em;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  border-radius: 6px;
+  font-family: monospace;
+  white-space: pre;
+}
+
+pre code {
+  display: block;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+textarea {
+  width: 100%;
+  height: 200px;
+  padding: 12px;
+  font-size: 16px;
+  font-family: inherit; /* assumes same font as input */
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: white;
+  box-sizing: border-box;
+  resize: vertical;
+  margin: 1em 0;
+}
+
+.anchor-target {
+  scroll-margin-top: 80px; /* adjust based on your sticky topbar height */
+}
+
+
+
+@media (max-width: 600px) {
+  .container {
+  width: 46vw;
+  height: 46vw;
+  }
+
+  .btn-text {
+    display: none;
+  }
+
+  .page{
+      padding: 20px 20px;
+  }
+}
+
+
