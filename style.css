@@ -324,4 +324,27 @@ textarea {
   }
 }
 
+/* Connection status styles */
+.connection-status {
+  font-size: 0.8em;
+  margin-left: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.connection-status.connected {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.connection-status.disconnected {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.connection-status.connecting {
+  background-color: #f39c12;
+  color: white;
+}
+
 

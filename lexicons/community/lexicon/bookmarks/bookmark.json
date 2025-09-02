@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "community.lexicon.bookmarks.bookmark",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A bookmark record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["uri", "createdAt"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2000,
+            "description": "The URI being bookmarked"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "The title of the bookmarked resource"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "A description of the bookmarked resource"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxLength": 20,
+            "description": "Tags associated with the bookmark"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the bookmark was created"
+          }
+        }
+      }
+    }
+  }
+}

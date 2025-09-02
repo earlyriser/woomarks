@@ -1,8 +1,10 @@
-// ====== Constants & Globals ======
-const LOCAL_GLOW = true;  // adds a glow to differentiate items stored locally in the browser from those stored in csv file
-const EXPORT = "all"; // choose export type "all", "csv", "local" 
-// const appcode = "notsosecretcode";  
+// ====== AT Protocol & Constants ======
+// AtpAgent is loaded via window.AtpAgent from the module import
 
+// Bookmark lexicon definition (using community standard)
+const BOOKMARK_LEXICON = "community.lexicon.bookmarks.bookmark";
+
+const LOCAL_GLOW = false; // No local storage differentiation needed
 const MAX_CHARS_PER_LINE = 15;
 const MAX_LINES = 4;
 const EST_CHAR_WIDTH = 0.6; // em
@@ -26,15 +28,18 @@ const FONT_LIST = [
 ];
 
 // State variables
-let originalRows = [];
-let csvRows = [];
-let storedRows = [];
-let storedRowHashes = new Set();
+let atpAgent = null;
+let userDid = null;
+let bookmarks = [];
 let reversedOrder = false;
-let deleted = JSON.parse(localStorage.getItem("deleted_csv_rows") || "[]");
-
 
 // ====== DOM Elements ======
+const loginDialog = document.getElementById("loginDialog");
+const handleInput = document.getElementById("handleInput");
+const passwordInput = document.getElementById("passwordInput");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const connectionStatus = document.getElementById("connectionStatus");
 
 const dialog = document.getElementById("paramDialog");
 const titleInput = document.getElementById("paramTitle");
@@ -43,35 +48,247 @@ const tagsInput = document.getElementById("tagsInput");
 const saveBtn = document.getElementById("saveBtn");
 const cancelBtn = document.getElementById("cancelBtn");
 const openEmptyDialogBtn = document.getElementById("openEmptyDialogBtn");
-const appcodeInput = document.getElementById("appcode");
-const modalOverlay = document.getElementById("modalOverlay");
-const searchInput =document.getElementById("searchInput");
+const searchInput = document.getElementById("searchInput");
 const sortToggleBtn = document.getElementById("sortToggleBtn");
-const exportBtn = document.getElementById("exportBtn")
-const importArea = document.getElementById("importArea")
 
+// ====== AT Protocol Functions ======
+
+/**
+ * Initialize AT Protocol agent with stored session
+ */
+async function initializeATProto() {
+  const session = localStorage.getItem("atproto_session");
+  if (!session) {
+    showLoginDialog();
+    return false;
+  }
+
+  try {
+    atpAgent = new window.AtpAgent({
+      service: "https://bsky.social",
+    });
+    
+    await atpAgent.resumeSession(JSON.parse(session));
+    userDid = atpAgent.session.did;
+    
+    updateConnectionStatus("connected");
+    showMainUI();
+    await loadBookmarks();
+    return true;
+  } catch (error) {
+    console.error("Failed to resume session:", error);
+    localStorage.removeItem("atproto_session");
+    showLoginDialog();
+    return false;
+  }
+}
+
+/**
+ * Login to AT Protocol
+ */
+async function login() {
+  const handle = handleInput.value.trim();
+  const password = passwordInput.value.trim();
+
+  if (!handle || !password) return;
+
+  updateConnectionStatus("connecting");
+  
+  try {
+    atpAgent = new window.AtpAgent({
+      service: "https://bsky.social",
+    });
+
+    await atpAgent.login({
+      identifier: handle,
+      password: password,
+    });
+
+    userDid = atpAgent.session.did;
+    localStorage.setItem("atproto_session", JSON.stringify(atpAgent.session));
+    
+    updateConnectionStatus("connected");
+    loginDialog.close();
+    showMainUI();
+    await loadBookmarks();
+  } catch (error) {
+    console.error("Login failed:", error);
+    updateConnectionStatus("disconnected");
+    alert("Login failed. Please check your credentials.");
+  }
+}
+
+/**
+ * Logout from AT Protocol
+ */
+async function logout() {
+  if (atpAgent) {
+    try {
+      await atpAgent.com.atproto.session.delete();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  }
+  
+  atpAgent = null;
+  userDid = null;
+  bookmarks = [];
+  localStorage.removeItem("atproto_session");
+  updateConnectionStatus("disconnected");
+  showLoginDialog();
+}
+
+/**
+ * Load bookmarks from PDS
+ */
+async function loadBookmarks() {
+  if (!atpAgent || !userDid) return;
+
+  try {
+    updateConnectionStatus("connecting");
+    
+    const response = await atpAgent.com.atproto.repo.listRecords({
+      repo: userDid,
+      collection: BOOKMARK_LEXICON,
+    });
+
+    bookmarks = response.data.records.map(record => ({
+      uri: record.uri,
+      cid: record.cid,
+      ...record.value
+    }));
+
+    renderBookmarks();
+    updateConnectionStatus("connected");
+  } catch (error) {
+    console.error("Failed to load bookmarks:", error);
+    updateConnectionStatus("disconnected");
+  }
+}
+
+/**
+ * Save a bookmark to PDS
+ */
+async function saveBookmark() {
+  const title = titleInput.value.trim();
+  const url = urlInput.value.trim();
+  const rawTags = tagsInput.value.trim();
+
+  if (!title || !url || !atpAgent || !userDid) return;
+
+  const tags = rawTags.split(",").map(t => t.trim()).filter(Boolean);
+  
+  const bookmarkRecord = {
+    $type: BOOKMARK_LEXICON,
+    uri: url,
+    title,
+    tags,
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    updateConnectionStatus("connecting");
+    
+    const response = await atpAgent.com.atproto.repo.createRecord({
+      repo: userDid,
+      collection: BOOKMARK_LEXICON,
+      record: bookmarkRecord,
+    });
+
+    // Add to local array
+    bookmarks.push({
+      uri: response.data.uri,
+      cid: response.data.cid,
+      ...bookmarkRecord
+    });
+
+    renderBookmarks();
+    dialog.close();
+    updateConnectionStatus("connected");
+    
+    // Clear URL params and reload to clean state
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } catch (error) {
+    console.error("Failed to save bookmark:", error);
+    updateConnectionStatus("disconnected");
+    alert("Failed to save bookmark. Please try again.");
+  }
+}
+
+/**
+ * Delete a bookmark from PDS
+ */
+async function deleteBookmark(uri) {
+  if (!atpAgent || !userDid) return;
+
+  try {
+    updateConnectionStatus("connecting");
+    
+    const rkey = uri.split("/").pop();
+    await atpAgent.com.atproto.repo.deleteRecord({
+      repo: userDid,
+      collection: BOOKMARK_LEXICON,
+      rkey,
+    });
+
+    // Remove from local array
+    bookmarks = bookmarks.filter(bookmark => bookmark.uri !== uri);
+    renderBookmarks();
+    updateConnectionStatus("connected");
+  } catch (error) {
+    console.error("Failed to delete bookmark:", error);
+    updateConnectionStatus("disconnected");
+  }
+}
+
+// ====== UI Functions ======
+
+function updateConnectionStatus(status) {
+  connectionStatus.className = `connection-status ${status}`;
+  switch (status) {
+    case "connected":
+      connectionStatus.textContent = "Connected";
+      break;
+    case "connecting":
+      connectionStatus.textContent = "Connecting...";
+      break;
+    case "disconnected":
+      connectionStatus.textContent = "Disconnected";
+      break;
+  }
+}
+
+function showLoginDialog() {
+  loginDialog.showModal();
+  openEmptyDialogBtn.style.display = "none";
+  sortToggleBtn.style.display = "none";
+  searchInput.style.display = "none";
+  logoutBtn.style.display = "none";
+}
+
+function showMainUI() {
+  openEmptyDialogBtn.style.display = "inline-block";
+  sortToggleBtn.style.display = "inline-block";
+  searchInput.style.display = "inline-block";
+  logoutBtn.style.display = "inline-block";
+}
 
 // ====== Utility Functions ======
 
 /**
  * Hashes a string to a non-negative 32-bit integer.
- * @param {string} str
- * @returns {number}
  */
 function hashString(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0; // Convert to 32-bit int
+    hash |= 0;
   }
   return Math.abs(hash);
 }
 
 /**
  * Get a color pair deterministically by title.
- * @param {string} title
- * @param {Array<Array<string>>} pairs
- * @returns {[string, string]} [backgroundColor, fontColor]
  */
 function getColorPairByTitle(title, pairs) {
   const hash = hashString(title);
@@ -82,168 +299,75 @@ function getColorPairByTitle(title, pairs) {
 
 /**
  * Get a font family deterministically by title.
- * @param {string} title
- * @param {string[]} fonts
- * @returns {string}
  */
 function getFontByTitle(title, fonts) {
   return fonts[hashString(title) % fonts.length];
 }
 
-/**
- * Parses CSV text into array of rows with cells.
- * Handles quoted commas and newlines.
- * @param {string} text CSV text
- * @returns {string[][]}
- */
-function parseCSV(text) {
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let insideQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-
-    if (char === '"') {
-      if (insideQuotes && text[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-    } else if (char === "," && !insideQuotes) {
-      row.push(cell);
-      cell = "";
-    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
-      if (cell || row.length) row.push(cell);
-      if (row.length) rows.push(row);
-      row = [];
-      cell = "";
-      if (char === "\r" && text[i + 1] === "\n") i++;
-    } else {
-      cell += char;
-    }
-  }
-
-  if (cell || row.length) {
-    row.push(cell);
-    rows.push(row);
-  }
-
-  return rows;
-}
+// ====== Rendering Functions ======
 
 /**
- * Retrieves bookmarks stored in localStorage.
- * Returns parsed array of rows.
+ * Renders bookmark containers
  */
-function getBookmarks() {
-  const csvString = localStorage.getItem("strd_bookmarks");
-  if (!csvString) return [];
-  return parseCSV(csvString.trim());
-}
-
-
-/**
- * Escapes CSV cell content if needed.
- * @param {string} cell
- * @returns {string}
- */
-function escapeCSVCell(cell) {
-  if (cell.includes(",") || cell.includes('"')) {
-    return `"${cell.replace(/"/g, '""')}"`;
-  }
-  return cell;
-}
-
-/**
- * Converts rows array to CSV string.
- * @param {string[][]} rows
- * @returns {string}
- */
-function rowsToCSV(rows) {
-  return rows.map(row => row.map(escapeCSVCell).join(",")).join("\n");
-}
-
-/**
- * Updates the deleted rows stored in localStorage.
- * @param {string[]} currentHashes Set of hashes currently present in CSV
- */
-function syncDeletedRows(currentHashes) {
-  deleted = deleted.filter(hash => currentHashes.has(hash));
-  localStorage.setItem("deleted_csv_rows", JSON.stringify(deleted));
-}
-
-// ====== Rendering & UI Functions ======
-
-/**
- * Renders bookmark containers based on rows.
- * @param {string[][]} rows
- * @param {Set<string>} storedHashes
- */
-function renderContainers(rows, storedHashes) {
+function renderBookmarks() {
   const containerWrapper = document.querySelector(".containers");
   containerWrapper.innerHTML = "";
 
   const fragment = document.createDocumentFragment();
+  const displayBookmarks = reversedOrder ? bookmarks : [...bookmarks].reverse();
 
-  rows.forEach(row => {
-    const titleRaw = row[0]?.trim();
-    const url = row[1]?.trim();
-    const tagsRaw = row[3]?.trim();
+  displayBookmarks.forEach(bookmark => {
+    const title = bookmark.title;
+    const url = bookmark.uri;
+    const tags = bookmark.tags || [];
 
-    if (!titleRaw || !url) return;
+    if (!title || !url) return;
 
-    const hashKey = hashString(titleRaw + url).toString();
-
-    if (deleted.includes(hashKey)) return;
-
-    const title = titleRaw.replace(/^https?:\/\/(www\.)?/i, "");
+    const displayTitle = title.replace(/^https?:\/\/(www\.)?/i, "");
     const [bgColor, fontColor] = getColorPairByTitle(title, COLOR_PAIRS);
     const fontFamily = getFontByTitle(title, FONT_LIST);
 
     const container = document.createElement("div");
-    container.className =
-  "container" + (LOCAL_GLOW && storedHashes.has(hashKey) ? " local-container" : "");
+    container.className = "container";
     container.style.backgroundColor = bgColor;
     container.style.color = fontColor;
     container.style.fontFamily = `'${fontFamily}', sans-serif`;
-    container.dataset.id = hashKey;
 
     // Delete Button
     const closeBtn = document.createElement("button");
     closeBtn.className = "delete-btn";
     closeBtn.textContent = "x";
     closeBtn.title = "Delete this bookmark";
-    closeBtn.setAttribute("data-umami-event", "Delete bookmark");
-    closeBtn.addEventListener("click", e => handleDelete(e, row, container, storedHashes));
+    closeBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (confirm("Delete this bookmark?")) {
+        deleteBookmark(bookmark.uri);
+      }
+    });
     container.appendChild(closeBtn);
 
     // Anchor (bookmark link)
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.target = "_blank";
-    anchor.innerHTML = `<span style="font-size: 5vw;"><span>${title}</span></span>`;
+    anchor.innerHTML = `<span style="font-size: 5vw;"><span>${displayTitle}</span></span>`;
     container.appendChild(anchor);
 
     // Tags
-    if (tagsRaw) {
-      const tags = tagsRaw.split(",").map(t => t.trim()).filter(Boolean);
-      if (tags.length > 0) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "tags-wrapper";
+    if (tags.length > 0) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "tags-wrapper";
 
-        tags.forEach(tag => {
-          const tagDiv = document.createElement("div");
-          tagDiv.className = "tags tag-style";
-          tagDiv.textContent = `#${tag}`;
-          tagDiv.addEventListener("click", () => filterByTag(tag));
-          wrapper.appendChild(tagDiv);
-        });
+      tags.forEach(tag => {
+        const tagDiv = document.createElement("div");
+        tagDiv.className = "tags tag-style";
+        tagDiv.textContent = `#${tag}`;
+        tagDiv.addEventListener("click", () => filterByTag(tag));
+        wrapper.appendChild(tagDiv);
+      });
 
-        container.appendChild(wrapper);
-      }
+      container.appendChild(wrapper);
     }
 
     fragment.appendChild(container);
@@ -254,54 +378,15 @@ function renderContainers(rows, storedHashes) {
 }
 
 /**
- * Handles bookmark deletion.
- * @param {Event} e
- * @param {string[]} row
- * @param {HTMLElement} container
- * @param {Set<string>} storedHashes
- */
-function handleDelete(e, row, container, storedHashes) {
-  e.stopPropagation();
-  e.preventDefault();
-
-  const title = row[0]?.trim();
-  const url = row[1]?.trim();
-  const key = hashString(title + url).toString();
-
-  const isLocal = storedHashes.has(key);
-
-  if (isLocal) {
-    let csvData = localStorage.getItem("strd_bookmarks") || "";
-    const rows = parseCSV(csvData.trim());
-
-    // Filter out matching row
-    const filteredRows = rows.filter(r => r[0]?.trim() !== title || r[1]?.trim() !== url);
-
-    // Convert back to CSV
-    const updatedCSV = rowsToCSV(filteredRows) + "\n";
-    localStorage.setItem("strd_bookmarks", updatedCSV);
-  } else {
-    if (!deleted.includes(key)) {
-      deleted.push(key);
-      localStorage.setItem("deleted_csv_rows", JSON.stringify(deleted));
-    }
-  }
-
-  container.remove();
-}
-
-/**
- * Filter the bookmarks by clicking on a tag.
- * @param {string} tag
+ * Filter bookmarks by tag
  */
 function filterByTag(tag) {
-  const searchInput = document.getElementById("searchInput");
   searchInput.value = `#${tag}`;
   searchInput.dispatchEvent(new Event("input"));
 }
 
 /**
- * Formats text inside containers after rendering.
+ * Formats text inside containers after rendering
  */
 function runTextFormatting() {
   document.querySelectorAll(".container").forEach(container => {
@@ -314,7 +399,6 @@ function runTextFormatting() {
 
     anchor.innerHTML = "";
 
-    // Replace certain separators with <hr/>
     const formattedText = originalText.replace(/(\s\|\s|\s-\s|\s–\s|\/,)/g, "<hr/>");
     const [firstPart, ...restParts] = formattedText.split("<hr/>");
     const secondPart = restParts.join("<hr/>");
@@ -332,7 +416,6 @@ function runTextFormatting() {
 
     const firstSpan = document.createElement("span");
     firstSpan.innerHTML = firstPart;
-
     span.appendChild(firstSpan);
 
     if (restParts.length) {
@@ -351,12 +434,10 @@ function runTextFormatting() {
   });
 }
 
-// ====== Event Handlers ======
+// ====== Search & Event Handlers ======
 
 /**
- * Debounce utility.
- * @param {Function} fn
- * @param {number} delay
+ * Debounce utility
  */
 function debounce(fn, delay) {
   let timeout;
@@ -366,32 +447,8 @@ function debounce(fn, delay) {
   };
 }
 
-if(searchInput){
-  searchInput.addEventListener(
-    "input",
-    debounce(e => {
-      const searchTerm = e.target.value.trim();
-      updateURLSearchParam("search", searchTerm);
-      runSearch(searchTerm);
-    }, 150)
-  );
-}
-
 /**
- * Updates URL search params without reloading page.
- * @param {string} key
- * @param {string} value
- */
-function updateURLSearchParam(key, value) {
-  const params = new URLSearchParams(window.location.search);
-  if (value) params.set(key, value);
-  else params.delete(key);
-  history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
-}
-
-/**
- * Search functionality for bookmarks.
- * @param {string} term
+ * Search functionality for bookmarks
  */
 function runSearch(term) {
   const searchTerm = term.toLowerCase();
@@ -411,27 +468,12 @@ function runSearch(term) {
   });
 }
 
-// Sort toggle button
-if(sortToggleBtn){
-  sortToggleBtn.addEventListener("click", () => {
-    reversedOrder = !reversedOrder;
-
-    if (reversedOrder) {
-      renderContainers(originalRows, storedRowHashes);
-      sortToggleBtn.lastChild.textContent = " ▼";
-    } else {
-      renderContainers([...originalRows].reverse(), storedRowHashes);
-        sortToggleBtn.lastChild.textContent = " ▲";
-
-    }
-  });
-}
-
-
-// ====== Dialog Logic ======
-
+/**
+ * Show dialog with URL params if present
+ */
 function showParamsIfPresent() {
-  if (!dialog) return; 
+  if (!dialog || !atpAgent) return;
+  
   const params = new URLSearchParams(window.location.search);
   const title = params.get("title");
   const url = params.get("url");
@@ -441,231 +483,87 @@ function showParamsIfPresent() {
     urlInput.value = url;
     dialog.showModal();
   }
-
-  saveBtn.onclick = saveBookmark;
 }
 
-function saveBookmark() {
-  const newTitle = titleInput.value.trim();
-  const newUrl = urlInput.value.trim();
-  const rawTags = tagsInput.value.trim();
+// ====== Event Listeners ======
 
-  if (!newTitle || !newUrl) return; // Basic validation
+// Login/logout
+loginBtn.addEventListener("click", login);
+logoutBtn.addEventListener("click", logout);
 
-  const timestamp = Math.floor(Date.now() / 1000);
-  const status = "unread";
-
-  // Normalize tags
-  const normalizedTags = rawTags.split(",").map(t => t.trim()).filter(Boolean).join(",");
-
-  // Escape for CSV
-  const safeTitle = escapeCSVCell(newTitle);
-  const safeTags = escapeCSVCell(normalizedTags);
-
-  const line = `${safeTitle},${newUrl},${timestamp},${safeTags},${status}`;
-
-  let csvData = localStorage.getItem("strd_bookmarks") || "";
-  if (csvData && !csvData.endsWith("\n")) csvData += "\n";
-  csvData += line + "\n";
-
-  localStorage.setItem("strd_bookmarks", csvData);
-
-  // Save appcode if changed
-  const appcodeValue = appcodeInput?.value.trim();
-  if (appcodeValue && localStorage.getItem("appcode") !== appcodeValue) {
-    localStorage.setItem("appcode", appcodeValue);
-  }
-
+// Dialog
+saveBtn.addEventListener("click", saveBookmark);
+cancelBtn?.addEventListener("click", () => {
   dialog.close();
-  window.location.href = window.location.pathname; // Reload page to re-render
-}
+  window.history.replaceState({}, document.title, window.location.pathname);
+});
 
-if(cancelBtn){
-  cancelBtn.onclick = () => {
-    dialog.close();
-    window.location.href = window.location.pathname;
-  };
-}
+// Main UI
+openEmptyDialogBtn?.addEventListener("click", () => {
+  if (!atpAgent) return;
+  
+  titleInput.value = "";
+  urlInput.value = "";
+  tagsInput.value = "";
+  
+  const countInfo = document.getElementById("paramDialogCount");
+  countInfo.innerHTML = `${bookmarks.length} bookmarks in PDS`;
+  
+  dialog.showModal();
+});
 
-// Open dialog button logic with counts
-if(openEmptyDialogBtn){
+// Search
+searchInput?.addEventListener(
+  "input",
+  debounce(e => {
+    const searchTerm = e.target.value.trim();
+    const params = new URLSearchParams(window.location.search);
+    if (searchTerm) params.set("search", searchTerm);
+    else params.delete("search");
+    history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
+    runSearch(searchTerm);
+  }, 150)
+);
 
-  console.log('!!! appcode', typeof appcode)
-  openEmptyDialogBtn.style.display = ( typeof appcode === "undefined" || (typeof appcode !== "undefined" && localStorage.getItem("appcode") === appcode)) ? "inline-block" : "none";
+// Sort toggle
+sortToggleBtn?.addEventListener("click", () => {
+  reversedOrder = !reversedOrder;
+  renderBookmarks();
 
-  openEmptyDialogBtn.addEventListener("click", () => {
-    titleInput.value = "";
-    urlInput.value = "";
-
-    const deletedHashes = JSON.parse(localStorage.getItem("deleted_csv_rows") || "[]");
-
-    const csvCount = csvRows.filter(row => {
-      const title = row[0]?.trim();
-      const url = row[1]?.trim();
-      if (!title || !url) return false;
-      const key = hashString(title + url).toString();
-      return !deletedHashes.includes(key);
-    }).length;
-
-    const deletedCount = csvRows.length - csvCount;
-
-    const countInfo = document.getElementById("paramDialogCount");
-    const parts = [`${csvCount} bookmarks from .csv`];
-    if (storedRows.length > 0) parts.push(`<span style="color: green;">${storedRows.length} new</span>`);
-    if (deletedCount > 0) parts.push(`<span style="color: red;">${deletedCount} deleted</span>`);
-
-    countInfo.innerHTML = parts.join(" | ");
-
-    dialog.showModal();
-  });
-}
-// Export button logic
-if(exportBtn){
-  exportBtn.addEventListener("click", () => {
-
-    // get the rows shown
-    const deletedHashes = JSON.parse(localStorage.getItem("deleted_csv_rows") || "[]");
-
-    const visibleCSVRows = csvRows.filter(row => {
-      const title = row[0]?.trim();
-      const url = row[1]?.trim();
-      if (!title || !url) return false;
-      const key = hashString(title + url).toString();
-      return !deletedHashes.includes(key);
-    });
-
-
-    let allRows = [];
-    if (EXPORT === "csv") {
-      allRows = visibleCSVRows;
-    } else if (EXPORT === "local") {
-      allRows = storedRows;
-    } else if (EXPORT === "all") {
-      allRows = [...visibleCSVRows, ...storedRows];
-    }
-
-    // create csv
-    const header = "title,url,timestamp,tags,status";
-    const csvString = [header, ...allRows.map(row => row.map(escapeCSVCell).join(","))].join("\n");
-
-    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "mybookmarks.csv";
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    // clear deleted hashes after export
-    localStorage.removeItem("deleted_csv_rows");
-  });
-}
-
-
-
-// Import logic
-document.addEventListener("DOMContentLoaded", () => {
-  const saveBtn = document.getElementById("importSaveBtn");
-
-  console.log('!!! loaded')
-  if (importArea) {
-    console.log('!! import area')
-
-    importArea.addEventListener("blur", () => {
-      const csv = importArea.value.trim();
-      if (!csv) return;
-
-      const rows = parseCSV(csv);
-      const valid = rows.filter(row =>
-        Array.isArray(row) &&
-        row.length >= 5 &&
-        row[0].trim() &&
-        row[1].trim() &&
-        !isNaN(Number(row[2])) &&
-        typeof row[4] === "string"
-      );
-
-      if (!valid.length) {
-        alert("No valid CSV rows found. Expecting title,url,timestamp,tags,status");
-        return;
-      }
-
-      const existing = localStorage.getItem("strd_bookmarks") || "";
-      const existingLines = existing.trim() ? existing.trim().split("\n") : [];
-
-      const cleanedRows = valid.map(row =>
-        row.map(escapeCSVCell).join(",")
-      );
-
-      const updated = [...existingLines, ...cleanedRows].join("\n") + "\n";
-      localStorage.setItem("strd_bookmarks", updated);
-      alert(`${cleanedRows.length} valid rows added to localStorage.`);
-    });
-  }
-
-  if (importArea && saveBtn) {
-    saveBtn.addEventListener("click", () => {
-      importArea.dispatchEvent(new Event("blur"));
-    });
+  if (reversedOrder) {
+    sortToggleBtn.lastChild.textContent = " ▼";
+  } else {
+    sortToggleBtn.lastChild.textContent = " ▲";
   }
 });
 
-
 // ====== Initialization ======
 
-fetch("mybookmarks.csv")
-  .then(response => {
-    if (!response.ok) throw new Error("Failed to load CSV");
-    return response.text();
-  })
-  .then(csv => {
-    const allRows = parseCSV(csv.trim());
-    csvRows = allRows.slice(1); // remove header
-
-    const currentCSVHashes = new Set(
-      csvRows.map(row => {
-        const title = row[0]?.trim();
-        const url = row[1]?.trim();
-        return title && url ? hashString(title + url).toString() : null;
-      }).filter(Boolean)
-    );
-
-    // Sync deleted rows with current CSV content
-    syncDeletedRows(currentCSVHashes);
-
-    storedRows = getBookmarks().filter(Boolean);
-    storedRowHashes = new Set(storedRows.map(r => hashString((r[0]?.trim() || "") + (r[1]?.trim() || "")).toString()));
-
-    originalRows = [...csvRows, ...storedRows];
-    renderContainers([...originalRows].reverse(), storedRowHashes);
-
+document.addEventListener("DOMContentLoaded", async () => {
+  updateConnectionStatus("disconnected");
+  
+  // Wait for AtpAgent to be loaded
+  let attempts = 0;
+  while (!window.AtpAgent && attempts < 50) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    attempts++;
+  }
+  
+  if (!window.AtpAgent) {
+    console.error("Failed to load AtpAgent");
+    updateConnectionStatus("disconnected");
+    return;
+  }
+  
+  const initialized = await initializeATProto();
+  if (initialized) {
+    showParamsIfPresent();
+    
     // Restore search from URL
     const initialSearch = new URLSearchParams(window.location.search).get("search");
     if (initialSearch) {
-      const searchInput = document.getElementById("searchInput");
       searchInput.value = initialSearch;
       runSearch(initialSearch);
     }
-  })
-  .catch(console.error);
-
-// Show or hide appcode input based on localStorage
-const savedAppcode = localStorage.getItem("appcode");
-
-/**
- * Enable or disable save button based on appcode input state.
- */
-function updateSaveButtonState() {
-  const localCode = localStorage.getItem("appcode") || "";
-  const inputCode = appcodeInput?.value?.trim() || "";
-  saveBtn.disabled = !(localCode === appcode || inputCode === appcode);
-}
-
-showParamsIfPresent();
-updateSaveButtonState();
-
-appcodeInput?.addEventListener("input", updateSaveButtonState);
+  }
+});

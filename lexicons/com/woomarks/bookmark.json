@@ -1,0 +1,42 @@
+{
+  "lexicon": 1,
+  "id": "com.woomarks.bookmark",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A bookmark record for woomarks",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["title", "url", "createdAt"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "The title of the bookmarked page"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2000,
+            "description": "The URL being bookmarked"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxLength": 20,
+            "description": "Tags associated with the bookmark"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the bookmark was created"
+          }
+        }
+      }
+    }
+  }
+}

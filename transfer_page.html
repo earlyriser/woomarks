@@ -3,53 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>transfer page | woomarks</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Doto&family=Alfa+Slab+One&family=Bebas+Neue&family=Bree+Serif&family=Caveat&family=Courier+Prime&family=Dosis&family=EB+Garamond&family=Permanent+Marker&family=Sedan+SC&family=Ultra&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon" />
-    <link rel="stylesheet" href="style.css" />
+    <title>woomarks - AT Protocol Edition</title>
+    <script>
+      // Redirect to main page since we no longer use CSV import/export
+      window.location.href = '/index.html';
+    </script>
   </head>
-
   <body>
-    <div class="topbar">
-        <div style="flex-grow: 1">
-            <b><a id="headerTitle" href="/index.html">woomarks</a></b>
-        </div>
-    </div>
-
-    <div class="page">
-        <h1>Transfer Page</h1>
-        <textarea placeholder="Paste CSV contents" id="importArea"></textarea>
-        
-        <div style="display: flex; justify-content: flex-end; gap: 30px;">
-        <button class="param-btn" id="exportBtn"  class="export-link" data-umami-event="Export">
-          Export my links as csv
-        </button>
-
-        <button class="param-btn dark" id="importSaveBtn" data-umami-event="Import">
-          Import my links
-        </button>
-        </div>
-
-
-        <br/><br/><br/><br/><br/><br/>
-        
-             <h3>How to import your bookmarks from Pocket</h3>
-        <p>Download from their page <a href="https://getpocket.com/export">https://getpocket.com/export</a></p>
-        <p>Open the file and paste its contents in the textarea. It won't upload the content, it will put it in the local storage of your browser</p>
-
-        <h3>How to import your bookmarks from other places</h3>
-        <p>Make a csv file with this formatting and paste its contents in the textarea. You can copy paste this sample to test it.</p>
-<pre><code>title,url,time_added,tags,status
-A Parliament of Owls and a Murder of Crows: How Groups of Birds Got Their N,https://www.themarginalian.org/2024/01/04/brian-wildsmith-birds-company-terms/,1706544592,,unread
-100 Best Books of the 21st Century - The New York Times,https://www.nytimes.com/interactive/2024/books/best-books-21st-century.html,1732713693,test,unreadSeven Goldfish,https://7goldfish.com/articles/2024_Hugo_Nominees.php,1750558532,books,unread
-Some Title,https://example.com,1720984873,tag1,unread
-"Title, with comma",https://example.com,1720984000,"tag1,tag2",read
-</code></pre>      
-    </div>
-    </body>
-    <script src="./script.js"></script>
-
+    <p>Redirecting to main woomarks app...</p>
+    <p>This AT Protocol edition no longer supports CSV import/export.</p>
+    <p>If not redirected automatically, <a href="/index.html">click here</a>.</p>
+  </body>
 </html>

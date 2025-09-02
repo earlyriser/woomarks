@@ -14,11 +14,40 @@
   </head>
 
   <body>
+    <!-- Login Modal -->
+    <dialog id="loginDialog" class="param-dialog">
+      <form method="dialog" class="param-form">
+        <h2>Connect to AT Protocol</h2>
+        <div class="param-group">
+          <label for="handleInput" class="param-label">Handle</label>
+          <input
+            type="text"
+            id="handleInput"
+            class="param-input"
+            placeholder="user.bsky.social"
+          />
+        </div>
+        <div class="param-group">
+          <label for="passwordInput" class="param-label">Password</label>
+          <input
+            type="password"
+            id="passwordInput"
+            class="param-input"
+          />
+        </div>
+        <menu class="param-menu">
+          <button id="loginBtn" type="button" class="param-btn dark">Login</button>
+        </menu>
+      </form>
+    </dialog>
+
     <div class="topbar">
       <div style="flex-grow: 1">
         <b><a id="headerTitle" href="">woomarks</a></b>
         <a href="./faq.html">FAQ</a>
+        <span id="connectionStatus" class="connection-status"></span>
       </div>
+      <button id="logoutBtn" class="param-btn" style="display: none;">Logout</button>
       <button id="openEmptyDialogBtn" data-umami-event="Open creation modal" class="param-btn"><span class="btn-text">Add</span> ➕</button>
 
       <button id="sortToggleBtn" data-umami-event="Sort" class="param-btn"><span class="btn-text">Sort</span> ▲</button>
@@ -72,11 +101,6 @@
         <p id="paramDialogCount" class="param-count"></p>
 
         <menu class="param-menu">
-          <div class="menu-left">
-            <a id="importBtn" href="./transfer_page.html" class="import-link"
-              >Bulk Transfer</a
-            >
-          </div>
           <div class="menu-right">
             <button
               id="cancelBtn"
@@ -100,5 +124,9 @@
       </form>
     </dialog>
   </body>
+  <script type="module">
+    import { AtpAgent } from 'https://unpkg.com/@atproto/api@0.12.21/dist/index.js';
+    window.AtpAgent = AtpAgent;
+  </script>
   <script async src="./script.js"></script>
 </html>
